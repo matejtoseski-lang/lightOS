@@ -3,13 +3,16 @@
 A simple **terminal-based OS simulation** in Python.
 
 ## Features
-- ASCII-art lightOS logo at startup
-- Shows available commands
-- File listing and opening
-- Calculator
-- Google search (opens browser)
-- Clear screen
-- Exit with a friendly message
+help            - Show commands
+ list            - List files
+ open <file>     - Open text file
+ calc            - Calculator
+ google          - Google search
+ myip            - Show your public IP
+ update          - Update lightOS
+ color           - Change color theme
+ clear           - Clear screen
+ exit            - Exit lightOS
 
 ## Requirements
 - Python 3.x (no extra modules required)
