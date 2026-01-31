@@ -20,5 +20,5 @@ Clone the repository:
 
 ```bash
 git clone https://github.com/matejtoseski-lang/lightOS.git
-cd lightOS
+cd lightOS ls
 python lightOS.py
