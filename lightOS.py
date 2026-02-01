@@ -1,79 +1,70 @@
 import os
+import sys
 import time
-import webbrowser
-import subprocess
-import shutil
+import datetime
 import urllib.request
+
+# ================= FILES =================
+SECURITY_LOG = "security.log"
 
 # ================= COLORS =================
 COLORS = {
-    "default": "\033[0m",
-    "green": "\033[92m",
     "blue": "\033[94m",
-    "red": "\033[91m",
+    "green": "\033[92m",
     "purple": "\033[95m",
-    "cyan": "\033[96m"
+    "red": "\033[91m"
 }
+RESET = "\033[0m"
 
-CURRENT_COLOR = COLORS["cyan"]
+def cprint(text, theme="blue"):
+    print(COLORS.get(theme, COLORS["blue"]) + text + RESET)
 
-def color(text):
-    return CURRENT_COLOR + text + COLORS["default"]
-
-# ================= CLEAR =================
+# ================= UTILS =================
 def clear():
     os.system("cls" if os.name == "nt" else "clear")
 
-# ================= BOOT =================
-def boot_animation():
-    clear()
-    lines = [
-        "lightOS v1.0",
-        "Initializing kernel...",
-        "Loading system modules...",
-        "Mounting filesystem...",
-        "Starting terminal services...",
-        "Checking network...",
-        "System ready.",
-        "",
-        "Welcome to lightOS"
-    ]
-
-    for line in lines:
-        print(color(line))
-        time.sleep(0.4)
-
-    time.sleep(1)
-    clear()
-
-# ================= UPDATE CHECK =================
-def check_for_updates():
-    if not os.path.exists(".git"):
-        return
+def get_public_ip():
     try:
-        subprocess.run(
-            ["git", "fetch"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
-
-        local = subprocess.check_output(["git", "rev-parse", "HEAD"]).strip()
-        remote = subprocess.check_output(["git", "rev-parse", "@{u}"]).strip()
-
-        if local != remote:
-            print(color("⚠ Update is needed! Run 'update'\n"))
+        return urllib.request.urlopen("https://api.ipify.org", timeout=3).read().decode()
     except:
-        pass
+        return "UNKNOWN"
 
-# ================= HEADER =================
-def print_header():
-    width = shutil.get_terminal_size((80, 20)).columns
-    text = "Made by Matej Toseski"
-    print(color(text.rjust(width)))
+def log_session(username):
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ip = get_public_ip()
+    with open(SECURITY_LOG, "a") as f:
+        f.write(f"[{now}] USER: {username} | IP: {ip}\n")
 
-# ================= LOGO =================
-def lightos_logo():
-    print(color(r"""
+# ================= MALWARE SCANNER =================
+SUSPICIOUS_PATTERNS = [
+    "eval(", "exec(", "os.system", "subprocess",
+    "socket", "base64", "requests",
+    "rm -rf", "powershell", "wget", "curl"
+]
+
+def scan_for_malware():
+    print("\n🛡️ Malware scan started...\n")
+    found = False
+
+    for file in os.listdir("."):
+        if file.endswith((".py", ".sh", ".bat", ".txt")):
+            try:
+                with open(file, "r", errors="ignore") as f:
+                    content = f.read().lower()
+                    for pattern in SUSPICIOUS_PATTERNS:
+                        if pattern in content:
+                            print(f"⚠️ Suspicious pattern in {file} → {pattern}")
+                            found = True
+            except:
+                pass
+
+    if not found:
+        print("✅ No suspicious files found.")
+    else:
+        print("\n⚠️ Scan finished with warnings.")
+
+# ================= ASCII LOGO =================
+LOGO = r"""
                                                     ,----..               
   ,--,                        ,---,       ___      /   /   \   .--.--.    
 ,--.'|     ,--,             ,--.' |     ,--.'|_   /   .     : /  /    '.  
@@ -89,120 +80,129 @@ def lightos_logo():
  ---`-'  |  ,   / |   :    :`--''        ---`-'     `---`                 
           ---`-'   \   \  /                                               
                     `--`-'                                                
-"""))
+"""
 
-# ================= MENU =================
-def show_options():
-    print(color("""
-Commands:
- help            - Show commands
- list            - List files
- open <file>     - Open text file
- calc            - Calculator
- google          - Google search
- myip            - Show your public IP
- update          - Update lightOS
- color           - Change color theme
- clear           - Clear screen
- exit            - Exit lightOS
-"""))
+# ================= LOGIN =================
+def login():
+    clear()
+    print("=== lightOS LOGIN ===\n")
 
-# ================= COMMANDS =================
-def list_files():
-    for f in os.listdir():
-        print(color(" - " + f))
+    users = {
+        "admin": "admin2013",
+        "user": "user123"
+    }
 
-def open_file(name):
-    if not os.path.exists(name):
-        print(color("File not found."))
-        return
-    try:
-        with open(name, "r", encoding="utf-8") as f:
-            print(color("\n" + f.read()))
-    except:
-        print(color("Cannot open file."))
+    for _ in range(3):
+        username = input("Username: ")
+        password = input("Password: ")
 
-def calculator():
-    print(color("Calculator (type 'exit' to quit)"))
-    while True:
-        exp = input("calc> ")
-        if exp.lower() == "exit":
-            break
-        try:
-            print(color(str(eval(exp))))
-        except:
-            print(color("Invalid expression"))
+        if username in users and users[username] == password:
+            log_session(username)
+            return username
 
-def google():
-    q = input("Search Google: ").strip()
-    if q:
-        webbrowser.open(
-            "https://www.google.com/search?q=" + q.replace(" ", "+")
-        )
+        print("❌ Invalid credentials.\n")
 
-def my_ip():
-    try:
-        ip = urllib.request.urlopen("https://api.ipify.org").read().decode()
-        print(color("Your public IP: " + ip))
-    except:
-        print(color("Unable to fetch IP."))
+    sys.exit("Too many failed attempts.")
 
-def update_lightos():
-    if not os.path.exists(".git"):
-        print(color("Not a git repository."))
-        return
-    result = subprocess.run(["git", "pull"], capture_output=True, text=True)
-    print(color(result.stdout or result.stderr))
+# ================= HELP =================
+def show_help():
+    print("""
+help   - Show commands
+list   - List files
+open   - Open text file
+calc   - Calculator
+google - Google search
+myip   - Show your public IP
+scan   - Scan files for malware
+update - Update lightOS
+color  - Change color theme
+clear  - Clear screen
+exit   - Exit lightOS
+""")
 
-def change_color():
-    global CURRENT_COLOR
-    print(color("Available colors: green, blue, red, purple, cyan"))
-    c = input("Choose color: ").lower()
-    if c in COLORS:
-        CURRENT_COLOR = COLORS[c]
-        print(color("Color changed!"))
+# ================= MAIN OS =================
+def lightos(username):
+    theme = "blue"
+    clear()
+
+    # Top-right credit
+    cols = os.get_terminal_size().columns
+    print("Made by Matej Toseski".rjust(cols))
+    print()
+
+    cprint(LOGO, theme)
+
+    if username == "admin":
+        cprint("Welcome back admin 🚀", theme)
     else:
-        print(color("Invalid color."))
+        cprint("Welcome to lightOS 🚀", theme)
 
-# ================= MAIN =================
-def main():
-    boot_animation()
-    print_header()
-    check_for_updates()
-    lightos_logo()
-    print(color("Welcome to lightOS 🚀"))
-    show_options()
+    show_help()
 
     while True:
-        cmd = input(color("lightOS> ")).strip().split()
-        if not cmd:
-            continue
+        cmd = input("\nlightOS> ").strip().lower()
 
-        c = cmd[0].lower()
+        if cmd == "help":
+            show_help()
 
-        if c == "help":
-            show_options()
-        elif c == "list":
-            list_files()
-        elif c == "open" and len(cmd) > 1:
-            open_file(cmd[1])
-        elif c == "calc":
-            calculator()
-        elif c == "google":
-            google()
-        elif c == "myip":
-            my_ip()
-        elif c == "update":
-            update_lightos()
-        elif c == "color":
-            change_color()
-        elif c == "clear":
+        elif cmd == "clear":
             clear()
-        elif c == "exit":
-            print(color("\nGood bye, see you soon! 👋\n"))
-            break
-        else:
-            print(color("Unknown command. Type 'help'."))
+            print("Made by Matej Toseski".rjust(cols))
+            print()
+            cprint(LOGO, theme)
+            show_help()
 
+        elif cmd == "list":
+            for f in os.listdir("."):
+                print(f)
+
+        elif cmd == "open":
+            name = input("File name: ")
+            if os.path.exists(name):
+                with open(name, "r", errors="ignore") as f:
+                    print(f.read())
+            else:
+                print("File not found.")
+
+        elif cmd == "calc":
+            expr = input("Enter calculation: ")
+            try:
+                print(eval(expr))
+            except:
+                print("Invalid expression.")
+
+        elif cmd == "google":
+            q = input("Search: ")
+            print(f"Google search (simulated): {q}")
+
+        elif cmd == "myip":
+            print("Your IP:", get_public_ip())
+
+        elif cmd == "scan":
+            scan_for_malware()
+
+        elif cmd == "update":
+            print("Checking for updates...")
+            time.sleep(1)
+            print("lightOS is up to date!")
+
+        elif cmd == "color":
+            new = input("Choose theme (blue/green/purple/red): ").lower()
+            if new in COLORS:
+                theme = new
+                print("Theme changed.")
+            else:
+                print("Invalid theme.")
+
+        elif cmd == "exit":
+            print("\nGood bye, see you soon! 👋")
+            time.sleep(1)
+            break
+
+        else:
+            print("Unknown command. Type 'help'.")
+
+# ================= BOOT =================
 if __name__ == "__main__":
-    main()
+    user = login()
+    lightos(user)
